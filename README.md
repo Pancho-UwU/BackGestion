@@ -22,7 +22,7 @@ Este proyecto es una API REST sencilla para manejar productos, usando **Node.js*
 2. **Instalar dependecias**
      ```bash
   npm install
-     ```
+   ```
 3.  **Aplicar migraciones**
    ```bash
    npx knex migrate:latest --esm
