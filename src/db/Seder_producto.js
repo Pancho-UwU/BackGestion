@@ -40,24 +40,108 @@ const capitalizar = (str) => {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 };
 
-// Función para generar SOLO el código de barras (sin insertar en BD)
+// Función SÚPER ROBUSTA para extraer IDs numéricos
+const extraerIDSeguro = (resultado, nombreCampo = 'id') => {
+  console.log(`🔍 Procesando resultado de returning:`, JSON.stringify(resultado));
+  
+  let valor = resultado;
+  
+  // Si es un array, tomar el primer elemento
+  if (Array.isArray(valor)) {
+    valor = valor[0];
+    console.log(`📋 Primer elemento del array:`, JSON.stringify(valor));
+  }
+  
+  // Si es un objeto, extraer el valor del campo
+  if (typeof valor === 'object' && valor !== null) {
+    // Buscar por el nombre específico del campo o cualquier campo que termine en 'Id'
+    const keys = Object.keys(valor);
+    const idKey = keys.find(k => k === nombreCampo || k.toLowerCase().includes('id'));
+    
+    if (idKey) {
+      valor = valor[idKey];
+      console.log(`🗝️  Extrayendo campo '${idKey}':`, valor);
+    } else {
+      // Si no hay clave específica, tomar el primer valor
+      valor = Object.values(valor)[0];
+      console.log(`🎯 Tomando primer valor:`, valor);
+    }
+  }
+  
+  // Si es string, intentar parsear como JSON
+  if (typeof valor === 'string') {
+    try {
+      const parsed = JSON.parse(valor);
+      console.log(`📄 String parseado como JSON:`, parsed);
+      return extraerIDSeguro(parsed, nombreCampo); // Recursión
+    } catch (e) {
+      // Si no es JSON válido, intentar convertir a número
+      const numero = parseInt(valor);
+      if (!isNaN(numero)) {
+        console.log(`🔢 String convertido a número:`, numero);
+        return numero;
+      }
+    }
+  }
+  
+  // Convertir a número
+  const numeroFinal = parseInt(valor);
+  if (isNaN(numeroFinal)) {
+    console.error(`❌ No se pudo convertir a número:`, valor);
+    throw new Error(`Valor inválido para ID: ${JSON.stringify(resultado)} -> ${valor}`);
+  }
+  
+  console.log(`✅ ID final extraído:`, numeroFinal);
+  return numeroFinal;
+};
+
+// Función alternativa: usar SELECT después de INSERT
+const insertarYObtenerID = async (tabla, datos, campoId) => {
+  try {
+    console.log(`📝 Insertando en ${tabla}:`, JSON.stringify(datos));
+    
+    // Opción 1: Intentar con returning
+    try {
+      const resultado = await db(tabla).insert(datos).returning(campoId);
+      console.log(`📥 Resultado returning de ${tabla}:`, JSON.stringify(resultado));
+      return extraerIDSeguro(resultado, campoId);
+    } catch (returningError) {
+      console.warn(`⚠️  Returning falló en ${tabla}, intentando con SELECT...`);
+    }
+    
+    // Opción 2: INSERT sin returning y luego SELECT del último
+    await db(tabla).insert(datos);
+    
+    // Buscar el último registro insertado
+    const ultimoRegistro = await db(tabla)
+      .select(campoId)
+      .orderBy(campoId, 'desc')
+      .limit(1);
+    
+    if (ultimoRegistro.length === 0) {
+      throw new Error(`No se encontró el registro insertado en ${tabla}`);
+    }
+    
+    const id = ultimoRegistro[0][campoId];
+    console.log(`🔍 ID obtenido via SELECT en ${tabla}:`, id);
+    return parseInt(id);
+    
+  } catch (error) {
+    console.error(`❌ Error insertando en ${tabla}:`, error.message);
+    throw error;
+  }
+};
+
+// Función para generar SOLO el código de barras
 const generarCodigoBarras = (nombre, marca) => {
-  // Limpiar y concatenar nombre y marca
   const nombreLimpio = nombre.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
   const marcaLimpia = marca.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-  
-  // Crear string base
   const baseString = `${nombreLimpio}_${marcaLimpia}`;
-  
-  // Generar hash único de 12 dígitos
   const hash = crypto.createHash('md5').update(baseString).digest('hex');
-  
-  // Tomar los primeros 12 caracteres y convertir a números
   const codigo = hash.substring(0, 12).replace(/[a-f]/g, (match) => {
-    return String.fromCharCode(match.charCodeAt(0) - 87 + 48); // convertir a-f a números
+    return String.fromCharCode(match.charCodeAt(0) - 87 + 48);
   }).replace(/[^0-9]/g, '').padEnd(12, '0').substring(0, 12);
-
-  return codigo; // Solo retorna el código, no inserta en BD
+  return codigo;
 };
 
 // Función mejorada para obtener o crear proveedor
@@ -65,78 +149,71 @@ const obtenerProveedorId = async (marca) => {
   try {
     console.log(`🔍 Buscando proveedor para marca: "${marca}"`);
     
-    // Buscar proveedor existente por empresa/marca (case insensitive)
+    // Buscar proveedor existente
     const proveedores = await db('proveedor')
       .select('proveedorId', 'empresa')
       .whereRaw('LOWER(empresa) = LOWER(?)', [marca])
       .limit(1);
     
     if (proveedores.length > 0) {
-      console.log(`✅ Proveedor encontrado: ID ${proveedores[0].proveedorId} - ${proveedores[0].empresa}`);
-      return proveedores[0].proveedorId;
+      const id = parseInt(proveedores[0].proveedorId);
+      console.log(`✅ Proveedor encontrado: ID ${id} - ${proveedores[0].empresa}`);
+      return id;
     }
     
-    // Si no existe, crear nuevo proveedor para esta marca
+    // Crear nuevo proveedor
     console.log(`🏭 Creando nuevo proveedor para marca: "${marca}"`);
-    
     const nuevoProveedor = {
       nombre: `Proveedor ${marca}`,
       empresa: marca,
       fono: '123456789',
-      coordenadas: '-33.4489,-70.6693', // Santiago, Chile
+      coordenadas: '-23.6597071,-70.3903201',
       tipoProducto: 'Productos Varios',
       correo: `contacto@${marca.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}.com`
     };
     
-    const [proveedorId] = await db('proveedor')
-      .insert(nuevoProveedor)
-      .returning('proveedorId');
-    
+    const proveedorId = await insertarYObtenerID('proveedor', nuevoProveedor, 'proveedorId');
     console.log(`✅ Nuevo proveedor creado: ID ${proveedorId} - ${marca}`);
     return proveedorId;
     
   } catch (error) {
-    console.error(`❌ Error obteniendo/creando proveedor para marca "${marca}":`, error.message);
+    console.error(`❌ Error con proveedor "${marca}":`, error.message);
     
-    // Fallback: buscar cualquier proveedor existente
+    // Fallback: buscar cualquier proveedor
     try {
-      console.log('🔄 Intentando usar proveedor existente como fallback...');
       const cualquierProveedor = await db('proveedor').select('proveedorId').limit(1);
-      
       if (cualquierProveedor.length > 0) {
-        console.log(`⚠️  Usando proveedor existente como fallback: ID ${cualquierProveedor[0].proveedorId}`);
-        return cualquierProveedor[0].proveedorId;
+        const id = parseInt(cualquierProveedor[0].proveedorId);
+        console.log(`⚠️  Usando proveedor fallback: ID ${id}`);
+        return id;
       }
     } catch (fallbackError) {
       console.error('❌ Error en fallback:', fallbackError.message);
     }
     
-    throw new Error(`No se pudo obtener o crear proveedor para marca: ${marca}`);
+    throw new Error(`No se pudo obtener proveedor para marca: ${marca}`);
   }
 };
 
 const seedProductos = async () => {
   try {
-    console.log('🌱 Iniciando seeder de productos...');
+    console.log('🌱 Iniciando seeder de productos MEJORADO...');
 
-    // Verificar que encontramos el archivo CSV
     if (!csvPath) {
-      console.log('\n❌ No se encontró el archivo nombre_total_marca.csv en ninguna de estas ubicaciones:');
+      console.log('\n❌ No se encontró el archivo nombre_total_marca.csv en ninguna ubicación:');
       posiblesPaths.forEach(p => console.log(`   - ${p}`));
-      console.log('\n💡 Coloca tu archivo nombre_total_marca.csv en una de estas rutas o ajusta la ruta en el código.\n');
       throw new Error('Archivo CSV no encontrado');
     }
 
     console.log(`📁 Usando archivo: ${csvPath}`);
 
-    const productosData = []; // Array para los datos de productos
+    const productosData = [];
 
-    // Leer CSV con Promise
+    // Leer CSV
     await new Promise((resolve, reject) => {
       fs.createReadStream(csvPath)
         .pipe(csv())
         .on('data', (row) => {
-          // Solo mostrar las primeras 3 filas para no saturar la consola
           if (productosData.length < 3) {
             console.log('📄 Fila leída:', row);
           }
@@ -159,60 +236,43 @@ const seedProductos = async () => {
           console.log(`📊 ${productosData.length} productos procesados del CSV`);
           resolve();
         })
-        .on('error', (error) => {
-          console.error('❌ Error leyendo CSV:', error.message);
-          reject(error);
-        });
+        .on('error', reject);
     });
 
     if (productosData.length === 0) {
       console.log('⚠️  No hay datos para insertar');
-      console.log('💡 Verifica que tu CSV tenga las columnas: nombre, area, Marca, pais, caracteristica');
       return;
     }
 
-    console.log('📋 Muestra de los primeros datos a insertar:');
-    console.log(productosData[0]);
-
-    // Verificar que las tablas existen
-    const tablaProductoExiste = await db.schema.hasTable('producto');
-    const tablaBarCodeExiste = await db.schema.hasTable('barCode');
-    const tablaProveedorExiste = await db.schema.hasTable('proveedor');
-    
-    if (!tablaProductoExiste) {
-      throw new Error('Tabla "producto" no existe. Ejecuta las migraciones primero.');
+    // Verificar tablas
+    const tablas = ['producto', 'barCode', 'proveedor'];
+    for (const tabla of tablas) {
+      const existe = await db.schema.hasTable(tabla);
+      if (!existe) {
+        throw new Error(`Tabla "${tabla}" no existe. Ejecuta las migraciones primero.`);
+      }
     }
-    
-    if (!tablaBarCodeExiste) {
-      throw new Error('Tabla "barCode" no existe. Ejecuta las migraciones primero.');
-    }
-    
-    if (!tablaProveedorExiste) {
-      throw new Error('Tabla "proveedor" no existe. Ejecuta las migraciones primero.');
-    }
-
     console.log('✅ Todas las tablas encontradas');
 
-    // Mostrar proveedores existentes ANTES de empezar
-    console.log('\n📋 Proveedores existentes en la base de datos:');
+    // Mostrar proveedores existentes
+    console.log('\n📋 Proveedores existentes:');
     const proveedoresExistentes = await db('proveedor').select('proveedorId', 'empresa', 'nombre');
     if (proveedoresExistentes.length > 0) {
       proveedoresExistentes.forEach(p => {
-        console.log(`   🏢 ID: ${p.proveedorId} - ${p.empresa} (${p.nombre})`);
+        console.log(`   🏢 ID: ${p.proveedorId} - ${p.empresa}`);
       });
     } else {
-      console.log('   ⚠️  No hay proveedores existentes - se crearán nuevos');
+      console.log('   ⚠️  No hay proveedores - se crearán nuevos');
     }
 
-    // SOLO limpiar productos y códigos de barras (NO proveedores)
-    console.log('\n🧹 Limpiando SOLO productos y códigos de barras (conservando proveedores)...');
+    // Limpiar solo productos y códigos de barras
+    console.log('\n🧹 Limpiando productos y códigos de barras...');
     await db('producto').del();
     await db('barCode').del();
-    console.log('✅ Productos y códigos de barras eliminados - Proveedores conservados');
+    console.log('✅ Limpieza completada - Proveedores conservados');
 
-    console.log('\n📦 Procesando productos y códigos de barras...');
+    console.log('\n📦 Procesando productos...');
     
-    // Cache para proveedores (evitar consultas repetidas)
     const cacheProveedores = new Map();
     let productosInsertados = 0;
     let erroresCount = 0;
@@ -222,11 +282,13 @@ const seedProductos = async () => {
       const producto = productosData[i];
       
       try {
-        // Obtener o crear proveedor (con cache)
+        console.log(`\n--- Procesando producto ${i + 1}/${productosData.length}: "${producto.nombre}" ---`);
+        
+        // Obtener proveedor
         let proveedorId;
         if (cacheProveedores.has(producto.marca)) {
           proveedorId = cacheProveedores.get(producto.marca);
-          console.log(`📋 Usando proveedor en cache para "${producto.marca}": ID ${proveedorId}`);
+          console.log(`📋 Proveedor en cache: ${proveedorId}`);
         } else {
           proveedorId = await obtenerProveedorId(producto.marca);
           cacheProveedores.set(producto.marca, proveedorId);
@@ -234,20 +296,30 @@ const seedProductos = async () => {
 
         // Generar código de barras
         const codigoBarras = generarCodigoBarras(producto.nombre, producto.marca);
-        
-        // URL optimizada para impresora POS 5890F (58mm papel térmico)
-        const nombreCorto = producto.nombre.substring(0, 20); // Máximo 20 caracteres para 58mm
-        const urlOptimizada = `https://barcode.orcascan.com/?type=code128&data=${codigoBarras}&format=png&width=300&height=80&layout=landscape&text=${encodeURIComponent(nombreCorto)}`;
+        const nombreCorto = producto.nombre.substring(0, 20);
+        const urlOptimizada = `https://barcode.orcascan.com/?type=code128&data=${codigoBarras}&format=svg&width=300&height=80&layout=landscape&text=${encodeURIComponent(nombreCorto)}`;
         
         // Insertar código de barras
-        const [barCodeId] = await db('barCode').insert({
+        const barCodeData = {
           codigoGuardad: codigoBarras,
           formato: 'CODE128',
-          url: urlOptimizada // Optimizado para POS 5890F
-        }).returning('barCodeId');
+          url: urlOptimizada
+        };
+        
+        const barCodeId = await insertarYObtenerID('barCode', barCodeData, 'barCodeId');
 
-        // Insertar producto con referencias
-        await db('producto').insert({
+        // Validar que ambos IDs sean números válidos
+        if (!Number.isInteger(proveedorId) || proveedorId <= 0) {
+          throw new Error(`ProveedorId inválido: ${proveedorId}`);
+        }
+        if (!Number.isInteger(barCodeId) || barCodeId <= 0) {
+          throw new Error(`BarCodeId inválido: ${barCodeId}`);
+        }
+
+        console.log(`📦 Insertando producto con proveedorId: ${proveedorId}, barCodeId: ${barCodeId}`);
+
+        // Insertar producto - SIN usar returning para evitar problemas
+        const productoData = {
           nombre: producto.nombre,
           categoria: producto.categoria,
           marca: producto.marca,
@@ -257,27 +329,28 @@ const seedProductos = async () => {
           precio: producto.precio,
           stock: producto.stock,
           estado: producto.estado,
-          proveedorId: proveedorId,
-          barCodeId: barCodeId
-        });
+          proveedorId: proveedorId,  // Número directo
+          barCodeId: barCodeId       // Número directo
+        };
+
+        await db('producto').insert(productoData);
 
         productosInsertados++;
+        console.log(`✅ Producto ${productosInsertados} insertado correctamente`);
 
         if (productosInsertados % 10 === 0) {
-          console.log(`✅ Procesados ${productosInsertados}/${productosData.length} productos...`);
+          console.log(`🎯 Progreso: ${productosInsertados}/${productosData.length} productos...`);
         }
 
       } catch (error) {
         erroresCount++;
-        console.error(`❌ Error procesando producto ${i + 1} "${producto.nombre}" (marca: ${producto.marca}):`, error.message);
+        console.error(`❌ Error en producto ${i + 1} "${producto.nombre}":`, error.message);
         
-        // Si hay muchos errores consecutivos, detener
         if (erroresCount > 5 && productosInsertados === 0) {
-          console.error('💥 Demasiados errores consecutivos. Deteniendo el proceso.');
+          console.error('💥 Demasiados errores consecutivos. Deteniendo.');
           throw new Error('Proceso detenido por múltiples errores');
         }
         
-        // Continuar con el siguiente producto
         continue;
       }
     }
@@ -287,53 +360,62 @@ const seedProductos = async () => {
     console.log(`   ❌ Errores: ${erroresCount}`);
     
     if (productosInsertados === 0) {
-      console.log('\n⚠️  No se insertó ningún producto. Revisa los errores anteriores.');
+      console.log('\n⚠️  No se insertó ningún producto.');
       return;
     }
     
-    // Mostrar estadísticas finales
-    console.log('\n📊 Estadísticas finales:');
-    const totalProductos = await db('producto').count('* as total');
-    const totalBarCodes = await db('barCode').count('* as total');
-    const totalProveedores = await db('proveedor').count('* as total');
-    
-    console.log(`   🛍️  Productos: ${totalProductos[0].total}`);
-    console.log(`   📦 Códigos de barras: ${totalBarCodes[0].total}`);
-    console.log(`   🏢 Proveedores: ${totalProveedores[0].total}`);
-    
-    // Mostrar algunos ejemplos de códigos generados
-    console.log('\n📋 Ejemplos de productos insertados:');
-    const ejemplos = await db('producto')
-      .join('barCode', 'producto.barCodeId', 'barCode.barCodeId')
-      .join('proveedor', 'producto.proveedorId', 'proveedor.proveedorId')
-      .select('producto.nombre', 'producto.marca', 'barCode.codigoGuardad', 'proveedor.empresa')
+    // Verificar resultados
+    console.log('\n🔍 Verificando datos insertados...');
+    const ejemplosVerificacion = await db('producto')
+      .select('productoId', 'nombre', 'marca', 'proveedorId', 'barCodeId')
       .limit(5);
     
-    ejemplos.forEach(ejemplo => {
-      console.log(`   📦 ${ejemplo.nombre} (${ejemplo.marca}) → ${ejemplo.codigoGuardad}`);
-      console.log(`      🏢 Proveedor: ${ejemplo.empresa}`);
+    console.log('\n📋 Verificación de tipos de datos:');
+    ejemplosVerificacion.forEach((prod, index) => {
+      console.log(`   ${index + 1}. ${prod.nombre}`);
+      console.log(`      proveedorId: ${prod.proveedorId} (tipo: ${typeof prod.proveedorId})`);
+      console.log(`      barCodeId: ${prod.barCodeId} (tipo: ${typeof prod.barCodeId})`);
     });
 
-    // Mostrar distribución por proveedores
-    console.log('\n🏢 Productos por proveedor:');
-    const proveedoresPorProducto = await db('proveedor')
-      .select('proveedor.empresa', 'proveedor.proveedorId')
-      .count('producto.productoId as total_productos')
-      .leftJoin('producto', 'proveedor.proveedorId', 'producto.proveedorId')
-      .groupBy('proveedor.proveedorId', 'proveedor.empresa')
-      .orderBy('total_productos', 'desc');
+    // Estadísticas finales
+    console.log('\n📊 Estadísticas finales:');
+    const stats = await Promise.all([
+      db('producto').count('* as total'),
+      db('barCode').count('* as total'),
+      db('proveedor').count('* as total')
+    ]);
     
-    proveedoresPorProducto.forEach(prov => {
-      console.log(`   🏭 ${prov.empresa}: ${prov.total_productos} productos`);
-    });
+    console.log(`   🛍️  Productos: ${stats[0][0].total}`);
+    console.log(`   📦 Códigos de barras: ${stats[1][0].total}`);
+    console.log(`   🏢 Proveedores: ${stats[2][0].total}`);
+
+    // Verificar joins funcionan correctamente
+    console.log('\n🔗 Verificando relaciones (JOINs):');
+    try {
+      const relacionesTest = await db('producto')
+        .join('barCode', 'producto.barCodeId', 'barCode.barCodeId')
+        .join('proveedor', 'producto.proveedorId', 'proveedor.proveedorId')
+        .select('producto.nombre', 'proveedor.empresa', 'barCode.codigoGuardad')
+        .limit(3);
+      
+      if (relacionesTest.length > 0) {
+        console.log('✅ JOINs funcionan correctamente:');
+        relacionesTest.forEach((rel, i) => {
+          console.log(`   ${i + 1}. ${rel.nombre} → ${rel.empresa} → ${rel.codigoGuardad}`);
+        });
+      } else {
+        console.log('⚠️  No se pudieron ejecutar los JOINs correctamente');
+      }
+    } catch (joinError) {
+      console.error('❌ Error en JOINs:', joinError.message);
+    }
 
   } catch (error) {
     console.error('❌ Error en seeder:', error.message);
     throw error;
   } finally {
-    // Cerrar conexión a la base de datos
     await db.destroy();
-    console.log('\n🔒 Conexión a la base de datos cerrada');
+    console.log('\n🔒 Conexión cerrada');
   }
 };
 
@@ -346,21 +428,22 @@ const ejecutarSeeder = async () => {
   } catch (error) {
     console.error('💥 Error ejecutando seeder:', error.message);
     console.log('\n💡 Sugerencias:');
-    console.log('   1. Verifica que las tablas existan (ejecuta migraciones)');
-    console.log('   2. Revisa que el archivo CSV tenga las columnas correctas');
-    console.log('   3. Verifica la conexión a la base de datos');
+    console.log('   1. Verifica las migraciones');
+    console.log('   2. Revisa el CSV');
+    console.log('   3. Verifica la conexión a BD');
+    console.log('   4. Revisa los logs detallados arriba');
     process.exit(1);
   }
 };
 
-// Función para ayudar a debug la estructura de carpetas
+// Función para debug
 const mostrarEstructura = () => {
-  console.log('\n📁 Estructura de carpetas actual:');
+  console.log('\n📁 Estructura de carpetas:');
   console.log('   📂 Directorio del seeder:', __dirname);
   
   try {
     const contenido = fs.readdirSync(__dirname);
-    console.log('   📂 Contenido del directorio actual:');
+    console.log('   📂 Contenido:');
     contenido.forEach(item => {
       const itemPath = path.join(__dirname, item);
       const esDirectorio = fs.statSync(itemPath).isDirectory();
@@ -372,8 +455,5 @@ const mostrarEstructura = () => {
   console.log('\n');
 };
 
-// Mostrar estructura para debug
 mostrarEstructura();
-
-// Ejecutar automáticamente
 ejecutarSeeder();

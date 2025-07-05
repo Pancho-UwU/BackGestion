@@ -1,1 +1,3 @@
-GET http://localhost:3000/api/
+GET http://localhost:3000/producto/getToBarCode/179143870000
+###
+GET http://localhost:3000/producto/all
