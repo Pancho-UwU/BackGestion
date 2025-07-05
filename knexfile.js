@@ -9,6 +9,10 @@ const config = {
     client: 'sqlite3',
     connection: {
       filename: './dev.sqlite3'
+    },
+    useNullAsDefault: true, // ← Agregar esta línea para eliminar el warning
+    migrations:{
+      tableName: 'knex_migrations'
     }
   },
 
