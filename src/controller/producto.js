@@ -32,5 +32,29 @@ export class producto_controlador
             return res.status(500).json({message:'error en la base de datos' + error.message})
         }
     }
+
+    static async createProduct(req, res) {
+        try {
+            let params = req.body;
+            console.log("Params: ")
+            console.log(params);
+            await producto_modelo.create(params.name, 
+                params.category,
+                params.brand,
+                params.country,
+                params.characteristic,
+                params.price,
+                params.stock,
+                params.state,
+                params.codigoGuardad,
+                params.url
+            );
+            return res.status(200).json(req);
+        } catch(error) {
+            return res.status(500).json({message:'error en la base de datos ' + error.message});
+        }
+
+    }
+
     
 }
