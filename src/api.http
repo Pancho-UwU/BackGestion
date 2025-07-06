@@ -1,4 +1,9 @@
-GET http://localhost:3000/producto/getToBarCode/884443000000
+GET http://localhost:3000/producto/getToBarCode
+Content-Type: application/json
+
+{
+    "barCode":884443000000
+}
 
 ####
 GET http://localhost:3000/producto/all
@@ -29,8 +34,17 @@ Content-Type: application/json
 {
     "price":25000.0,
     "stock":25,
-    "productoId":878
+    "productoId":878,
+    "nombre":"Prueba 3"
 }
 
 ###
 PATCH http://localhost:3000/producto/eliminar/878
+
+###
+GET http://localhost:3000/producto/getByName
+Content-Type: application/json
+
+{
+    "name": "Prueba 3"
+}

@@ -1,16 +1,15 @@
 
-import { tr } from 'zod/v4/locales';
 import {producto_modelo} from '../models/producto.js'
 export class producto_controlador
 {
     static async getProductoBarCode(req,res){
-        console.log(req.params)
-        const {barCode} = req.params
-        if (!barCode){
+        
+        let params = req.body
+        if (!params.barCode){
             return res.status(404).json({message: "Codigo de barra no existe"});
         }
         try{
-            const result = await producto_modelo.getProductoBarCode({barCode});
+            const result = await producto_modelo.getProductoBarCode(params.barCode);
             if (result == null){
                 return res.status(401).json({message:'El producto no existe'});
             }
@@ -80,6 +79,19 @@ export class producto_controlador
         }
         catch(err){
             return res.status(500).json('Error en el servidor '+ err.message)
+        }
+    }
+    static async getProductByName(req,res){
+        try{
+            let param= req.body
+            const {estado,data,message} = await producto_modelo.getProductName(param.name);
+             if(!estado){
+                return res.status(404).json(message)
+            } 
+            return res.status(200).json(data)
+        }
+        catch(err){
+            return res.status(500).json({message:'Error en el servidor '+ err.message})
         }
     }
 }

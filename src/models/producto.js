@@ -1,10 +1,11 @@
 import { error } from 'node:console';
 import db from '../db/db.js'
 import crypto from 'node:crypto';   // ESM
+import { string } from 'zod/v4';
 
 export class producto_modelo {
 
-    static async getProductoBarCode({barCode}) { // ✅ Cambiar {input} por {barCode}
+    static async getProductoBarCode(barCode) { // ✅ Cambiar {input} por {barCode}
         try {
             console.log('Código recibido en modelo:', barCode); // Debug
             
@@ -22,7 +23,7 @@ export class producto_modelo {
                 'barCode.url'
             )
             .join('barCode', 'producto.barCodeId', 'barCode.barCodeId')
-            .where('barCode.codigoGuardad', barCode) // ✅ Corregir 'barcode' por 'barCode'
+            .where('barCode.codigoGuardad', barCode.toString()) // ✅ Corregir 'barcode' por 'barCode'
             .andWhere('producto.estado', true) // Solo productos activos
             .first();
             
@@ -174,6 +175,24 @@ export class producto_modelo {
         }
         }catch(err){
             throw new Error('Error actualizar el producto' + err.message)
+        }
+    }
+    static async getProductName(name){
+        try{
+            if(name === undefined){
+                return{
+                    message: 'Id no encontrada',
+                    estado:false
+                }
+            }
+            const productoSeleccionado = await db('producto').where('nombre',name);
+            return {
+                message : "Datos encontrados",
+                estado :true,
+                data:productoSeleccionado};
+             
+        }catch(err){
+            throw new Error('Error obtener el producto' + err.message)
         }
     }
 
