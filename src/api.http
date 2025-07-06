@@ -1,3 +1,14 @@
-GET http://localhost:3000/producto/getToBarCode/179143870000
-###
+GET http://localhost:3000/producto/getToBarCode/884443000000
+
+
+
+
+
+####
 GET http://localhost:3000/producto/all
+
+###
+GET http://localhost:3000/barCode/barcodeimage/1
+
+###
+GET http://localhost:3000/proveedor/all

@@ -1,0 +1,30 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Código de barras</title>
+  <style>
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #print-area, #print-area * {
+        visibility: visible;
+      }
+      #print-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <button onclick="window.print()">🖨️ Imprimir</button>
+
+  <div id="print-area">
+    <img src="http://localhost:3000/barCode/barcodeimage/1" alt="Código de barras" style="width: 350px; " />
+  </div>
+</body>
+</html>

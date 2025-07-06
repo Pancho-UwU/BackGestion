@@ -45,6 +45,6 @@ export class producto_modelo {
             'barCode.codigoGuardad', 
             'barCode.url'
         )
-        .join('barCode', 'producto.barCodeId', 'barCode.barCodeId');
+        .join('barCode','producto.barCodeId','barcode.barCodeId')
     }
 }

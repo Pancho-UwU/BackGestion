@@ -297,7 +297,7 @@ const seedProductos = async () => {
         // Generar código de barras
         const codigoBarras = generarCodigoBarras(producto.nombre, producto.marca);
         const nombreCorto = producto.nombre.substring(0, 20);
-        const urlOptimizada = `https://barcode.orcascan.com/?type=code128&data=${codigoBarras}&format=svg&width=300&height=80&layout=landscape&text=${encodeURIComponent(nombreCorto)}`;
+        const urlOptimizada = `https://barcode.orcascan.com/?type=code128&data=${codigoBarras}&format=svg&width=300&height=80&layout=landscape&text=${codigoBarras}`;
         
         // Insertar código de barras
         const barCodeData = {
