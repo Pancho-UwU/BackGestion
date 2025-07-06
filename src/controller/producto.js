@@ -1,4 +1,5 @@
 
+import { tr } from 'zod/v4/locales';
 import {producto_modelo} from '../models/producto.js'
 export class producto_controlador
 {
@@ -38,23 +39,47 @@ export class producto_controlador
             let params = req.body;
             console.log("Params: ")
             console.log(params);
-            await producto_modelo.create(params.name, 
+            const {estado, message,data} =await producto_modelo.create(params.name, 
                 params.category,
                 params.brand,
                 params.country,
                 params.characteristic,
                 params.price,
                 params.stock,
-                params.state,
-                params.codigoGuardad,
                 params.url
             );
-            return res.status(200).json(req);
-        } catch(error) {
-            return res.status(500).json({message:'error en la base de datos ' + error.message});
+            if(!estado) {return res.status(401).json({message: message})}
+
+            return res.status(201).json(data);
+        } catch(err) {
+            return res.status(500).json({message:'error en la base de datos ' + err.message});
         }
 
     }
-
-    
+    static async actualizarProducto(req,res){
+        try{
+            let params= req.body;
+            const {estado, message, data} = await producto_modelo.putProduct(params.nombre,params.price,params.stock,params.productoId);
+            if(!estado){
+                return res.status(404).json({message:message});
+            }
+            return res.status(200).json(data)
+        }catch(err){
+            return res.status(500).json('Error en el servidor '+ err.message)
+        }
+        
+    }
+    static async deleteProduct(req,res){
+        try{
+            let params= req.params
+            const {estado, message} = await producto_modelo.deleteProducto(params.productoId)
+            if(!estado){
+                return res.status(404).json(message)
+            }
+            return res.status(200).json({message:message})
+        }
+        catch(err){
+            return res.status(500).json('Error en el servidor '+ err.message)
+        }
+    }
 }

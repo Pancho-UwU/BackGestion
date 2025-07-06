@@ -1,9 +1,5 @@
 GET http://localhost:3000/producto/getToBarCode/884443000000
 
-
-
-
-
 ####
 GET http://localhost:3000/producto/all
 
@@ -12,3 +8,29 @@ GET http://localhost:3000/barCode/barcodeimage/1
 
 ###
 GET http://localhost:3000/proveedor/all
+###
+POST http://localhost:3000/producto/create
+Content-Type: application/json
+
+{
+    "name":"prueba 1",
+    "category":"EPP",
+    "brand":"3m",
+    "country":"Chile",
+    "characteristics":"Llevelo tooo",
+    "price": 30000.0,
+    "stock": 5,
+    "url": null
+}
+###
+PATCH http://localhost:3000/producto/actualizar
+Content-Type: application/json
+
+{
+    "price":25000.0,
+    "stock":25,
+    "productoId":878
+}
+
+###
+PATCH http://localhost:3000/producto/eliminar/878
