@@ -3,7 +3,20 @@ import db from '../db/db.js'
 export class proveedor_modelo{
     static async getAll(){
         try{
-            const proveedores = await db('proveedor').select('*');
+            const proveedores = await db('proveedor').
+            select(
+                'proveedor.proveedorId',
+                'proveedor.nombre',
+                'proveedor.empresa',
+                'proveedor.fono',
+                'proveedor.tipoProducto',
+                'proveedor.correo',
+                'producto.pais',
+                'producto.categoria'
+            )
+            .join('producto','producto.proveedorId', 'proveedor.proveedorId')
+            .distinct();
+            console.log(proveedores.length)
             return proveedores;
         }
         catch(error){

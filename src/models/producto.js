@@ -10,6 +10,7 @@ export class producto_modelo {
             console.log('Código recibido en modelo:', barCode); // Debug
             
             const producto_db = await db('producto').select(
+                'producto.productoId',
                 'producto.nombre',
                 'producto.categoria',
                 'producto.marca',
@@ -18,7 +19,9 @@ export class producto_modelo {
                 'producto.precio',
                 'producto.stock',
                 'producto.estado',
-                'barCode.codigoGuardad'
+                'producto.caracteristicas',
+                'barCode.codigoGuardad',
+                'barCode.barCodeId'
             )
             .join('barCode', 'producto.barCodeId', 'barCode.barCodeId')
             .join('proveedor','proveedor.proveedorId','producto.proveedorId')
@@ -37,6 +40,7 @@ export class producto_modelo {
 
     static async getAll(){
         return await db('producto').select(
+            'producto.productoId',
             'producto.nombre',
             'producto.categoria',
             'producto.marca',
@@ -45,7 +49,9 @@ export class producto_modelo {
             'producto.precio',
             'producto.stock',
             'producto.estado',
-            'barCode.codigoGuardad'
+            'producto.caracteristicas',
+            'barCode.codigoGuardad',
+            'barCode.barCodeId'
         )
         .join('barCode', 'producto.barCodeId', 'barCode.barCodeId')
         .join('proveedor', 'producto.proveedorId', 'proveedor.proveedorId');
@@ -185,7 +191,9 @@ export class producto_modelo {
                 }
             }
             const productoSeleccionado = await db('producto')
-            .select('producto.nombre',
+            .select(
+                'producto.productoId',
+                'producto.nombre',
                 'producto.categoria',
                 'producto.marca',
                 'producto.pais',
@@ -193,6 +201,7 @@ export class producto_modelo {
                 'producto.precio',
                 'producto.stock',
                 'producto.estado',
+                'producto.caracteristicas',
                 'barCode.codigoGuardad'
             )
             .orWhere('producto.nombre',name)

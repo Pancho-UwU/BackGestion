@@ -4,12 +4,13 @@ export class producto_controlador
 {
     static async getProductoBarCode(req,res){
         
-        let params = req.body
-        if (!params.barCode){
+        let params = req.params
+        console.log(params.barCodeId)
+        if (!params.barCodeId){
             return res.status(404).json({message: "Codigo de barra no existe"});
         }
         try{
-            const result = await producto_modelo.getProductoBarCode(params.barCode);
+            const result = await producto_modelo.getProductoBarCode(params.barCodeId);
             if (result == null){
                 return res.status(401).json({message:'El producto no existe'});
             }

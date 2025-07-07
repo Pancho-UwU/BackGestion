@@ -7,7 +7,7 @@ export class proveedor_controller {
             return res.status(200).json(result)
         }
         catch(error){
-            return res.status(500).json({message:'Error en el servidor'+error.message});
+            return res.status(500).json({message:'Error en el servidor '+error.message});
         }
     }
     static async getFilter(req,res){

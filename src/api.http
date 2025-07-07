@@ -1,9 +1,6 @@
-GET http://localhost:3000/producto/getToBarCode
-Content-Type: application/json
+GET http://localhost:3000/producto/getToBarCode/017200000000
 
-{
-    "barCode":884443000000
-}
+
 
 ####
 GET http://localhost:3000/producto/all
