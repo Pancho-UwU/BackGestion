@@ -39,12 +39,26 @@ Content-Type: application/json
 }
 
 ###
-PATCH http://localhost:3000/producto/eliminar/878
+PATCH http://localhost:3000/producto/eliminar/2
 
 ###
-GET http://localhost:3000/producto/getByName
+GET http://localhost:3000/producto/Filter
 Content-Type: application/json
 
 {
-    "name": "Prueba 3"
+    "name": "Chile"
+}
+###
+GET https://backgestion.onrender.com/producto/getByName
+Content-Type: application/json
+
+{
+    "name": "Epp"
+}
+###
+GET http://localhost:3000/proveedor/filter
+Content-Type: application/json
+
+{
+    "input":""
 }

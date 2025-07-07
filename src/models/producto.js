@@ -10,19 +10,18 @@ export class producto_modelo {
             console.log('Código recibido en modelo:', barCode); // Debug
             
             const producto_db = await db('producto').select(
-                'producto.productoId', // Agregué ID
                 'producto.nombre',
                 'producto.categoria',
                 'producto.marca',
                 'producto.pais',
-                'producto.caracteristicas',
+                'proveedor.nombre as nombre_proveedor' ,
                 'producto.precio',
                 'producto.stock',
                 'producto.estado',
-                'barCode.codigoGuardad', // Agregué código
-                'barCode.url'
+                'barCode.codigoGuardad'
             )
             .join('barCode', 'producto.barCodeId', 'barCode.barCodeId')
+            .join('proveedor','proveedor.proveedorId','producto.proveedorId')
             .where('barCode.codigoGuardad', barCode.toString()) // ✅ Corregir 'barcode' por 'barCode'
             .andWhere('producto.estado', true) // Solo productos activos
             .first();
@@ -38,32 +37,31 @@ export class producto_modelo {
 
     static async getAll(){
         return await db('producto').select(
-            'producto.productoId', 
             'producto.nombre',
             'producto.categoria',
             'producto.marca',
             'producto.pais',
-            'producto.caracteristicas',
+            'proveedor.nombre as proveedor_nombre',
             'producto.precio',
             'producto.stock',
             'producto.estado',
-            'barCode.codigoGuardad', 
-            'barCode.url'
+            'barCode.codigoGuardad'
         )
-        .join('barCode','producto.barCodeId','barcode.barCodeId')
+        .join('barCode', 'producto.barCodeId', 'barCode.barCodeId')
+        .join('proveedor', 'producto.proveedorId', 'proveedor.proveedorId');
     }
 
     static async create(name, category, brand, country, characteristics,
         price, stock, url) {
         const generarCodigoBarras = (nombre, marca) => {
-        const nombreLimpio = nombre.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-        const marcaLimpia = marca.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-        const baseString = `${nombreLimpio}_${marcaLimpia}`;
-        const hash = crypto.createHash('md5').update(baseString).digest('hex');
-        const codigo = hash.substring(0, 12).replace(/[a-f]/g, (match) => {
-            return String.fromCharCode(match.charCodeAt(0) - 87 + 48);
-            }).replace(/[^0-9]/g, '').padEnd(12, '0').substring(0, 12);
-        return codigo;
+            const nombreLimpio = nombre.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            const marcaLimpia = marca.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            const baseString = `${nombreLimpio}_${marcaLimpia}`;
+            const hash = crypto.createHash('md5').update(baseString).digest('hex');
+            const codigo = hash.substring(0, 12).replace(/[a-f]/g, (match) => {
+                return String.fromCharCode(match.charCodeAt(0) - 87 + 48);
+                }).replace(/[^0-9]/g, '').padEnd(12, '0').substring(0, 12);
+            return codigo;
         };
         try{
             const productExist = await db('producto').whereRaw('LOWER(producto.nombre) = LOWER(?)',[name]).count({total: '*'}).first();
@@ -117,6 +115,7 @@ export class producto_modelo {
     } 
     static async putProduct(nombre,price,stock, productoId){
         try{
+            console.log(nombre, " ", price, " ", stock)
             if(productoId === undefined){
                 return{
                     message: 'id del producto no enviada',
@@ -162,14 +161,14 @@ export class producto_modelo {
                 }
                 
             }
-        const producto = await db('producto').where('productoId',productoId);
+        const producto = await db('producto').where('productoId',productoId).first();
         if(!producto){
             return{
                     message: 'Id no encontrada',
                     estado:false
                 }
         }
-        await db('producto').where('productoId',productoId).update({estado: !producto.estado})
+        await db('producto').where('productoId',productoId).update({estado: Number(producto.estado) === 1 ? 0 :1})
         return {message:'estado actualizado',
             estado:true
         }
@@ -185,7 +184,27 @@ export class producto_modelo {
                     estado:false
                 }
             }
-            const productoSeleccionado = await db('producto').where('nombre',name);
+            const productoSeleccionado = await db('producto')
+            .select('producto.nombre',
+                'producto.categoria',
+                'producto.marca',
+                'producto.pais',
+                'proveedor.nombre as nombre_proveedor' ,
+                'producto.precio',
+                'producto.stock',
+                'producto.estado',
+                'barCode.codigoGuardad'
+            )
+            .orWhere('producto.nombre',name)
+            .orWhere('producto.categoria','like',`%${name}`)
+            .orWhere('producto.marca','like',`%${name}`)
+            .orWhere('producto.pais','like',`%${name}`)
+            .orWhere('producto.caracteristicas','like',`%${name}`)
+            .join('proveedor','proveedor.proveedorId','producto.proveedorId')
+            .join('barCode','barCode.barCodeId','producto.barCodeId')
+            
+            ;
+            
             return {
                 message : "Datos encontrados",
                 estado :true,

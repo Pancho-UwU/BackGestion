@@ -10,4 +10,18 @@ export class proveedor_controller {
             return res.status(500).json({message:'Error en el servidor'+error.message});
         }
     }
+    static async getFilter(req,res){
+        try{
+            const input = req.body;
+            const {estado, message,data} = await proveedor_modelo.getFilter(input.input)
+            if(!estado){
+                return res.status(404).json(message)
+            } 
+            return res.status(200).json(data)
+        }
+        catch(err){
+            return res.status(500).json({message:'Error en el servidor '+ err.message})
+        }
+
+    }
 }

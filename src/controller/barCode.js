@@ -19,8 +19,7 @@ export class barcode_controller{
             // 🧹 Eliminar rectángulo de fondo (espacio blanco)
             svg = svg.replace(/<rect[^>]*fill="#ffffff"[^>]*\/>/gi, '');
 
-           
-
+        
             res.setHeader("Content-Type", "image/svg+xml");
             return res.send(svg);
 
